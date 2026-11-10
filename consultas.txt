@@ -1,0 +1,99 @@
+RESTRIÇÕES:
+SHOW CONSTRAINTS;
+
+
+QUANTIDADE DE ANIMES, GENEROS, TEMAS, DEMOGRAFIAS, ESTÚDIOS, PRODUTORAS:
+CALL {
+    MATCH (a:Anime)
+    RETURN count(a) AS total_animes
+}
+CALL {
+    MATCH (g:Genre)
+    RETURN count(g) AS total_generos
+}
+CALL {
+    MATCH (t:Theme)
+    RETURN count(t) AS total_temas
+}
+CALL {
+    MATCH (p:Producer)
+    RETURN count(p) AS total_produtoras
+}
+CALL {
+    MATCH (d:Demographic)
+    RETURN count(d) AS total_demografias
+}
+CALL {
+    MATCH (s:Studio)
+    RETURN count(s) AS total_estudios
+}
+RETURN
+    total_animes,
+    total_generos,
+    total_temas,
+    total_produtoras,
+    total_demografias,
+    total_estudios;
+
+
+CONTAGEM DE RELACIONAMENTOS:
+MATCH ()-[r]->()
+RETURN
+    type(r) AS tipo_relacionamento,
+    count(r) AS quantidade
+ORDER BY quantidade DESC;
+
+
+VISUALIZAR UM ANIME NO GRAFO:
+MATCH (a:Anime {mal_id: 52991})-[r]->(f)
+RETURN a, r, f;
+
+
+PROCURANDO O ID DE UM ANIME:
+MATCH (a:Anime)
+WHERE toLower(a.title) CONTAINS toLower("Sousou no Frieren")
+RETURN a.title, a.mal_id;
+
+
+BUSCA POR SIMILARIDADE:
+MATCH (source:Anime {mal_id: 9253})
+MATCH (source)-[]->(feature)<-[]-(candidate:Anime)
+WHERE candidate <> source
+
+WITH DISTINCT source, candidate
+
+WITH
+    candidate,
+    [(source)-[:HAS_GENRE]->(g:Genre)<-[:HAS_GENRE]-(candidate) | g.name] AS generos_compartilhados,
+    [(source)-[:HAS_THEME]->(t:Theme)<-[:HAS_THEME]-(candidate) | t.name] AS temas_compartilhados,
+    [(source)-[:TARGETS]->(d:Demographic)<-[:TARGETS]-(candidate) | d.name] AS demografias_compartilhadas,
+    [(source)-[:ANIMATED_BY]->(s:Studio)<-[:ANIMATED_BY]-(candidate) | s.name] AS estudios_compartilhados,
+    [(source)-[:PRODUCED_BY]->(p:Producer)<-[:PRODUCED_BY]-(candidate) | p.name] AS produtoras_compartilhadas
+
+WITH
+    candidate,
+    generos_compartilhados,
+    temas_compartilhados,
+    demografias_compartilhadas,
+    estudios_compartilhados,
+    produtoras_compartilhadas,
+
+    size(generos_compartilhados) * 2 +
+    size(temas_compartilhados) * 4 +
+    size(demografias_compartilhadas) * 3 +
+    size(estudios_compartilhados) * 2 +
+    size(produtoras_compartilhadas) AS pontuacao
+
+RETURN
+    candidate.mal_id AS mal_id,
+    candidate.title AS anime,
+    candidate.score AS nota_mal,
+    pontuacao,
+    generos_compartilhados,
+    temas_compartilhados,
+    demografias_compartilhadas,
+    estudios_compartilhados,
+    produtoras_compartilhadas
+
+ORDER BY pontuacao DESC, nota_mal DESC
+LIMIT 10;
